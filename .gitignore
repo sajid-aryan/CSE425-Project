@@ -38,7 +38,7 @@ data/cache/
 # Experiment artifacts
 *.log
 
-# Keep task scripts tracked explicitly (in case of broad ignore rules elsewhere)
+# Task scripts
 !easy_task.py
-!medium_task.py
-!hard_task.py
+medium_task.py
+hard_task.py
