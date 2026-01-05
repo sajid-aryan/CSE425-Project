@@ -38,7 +38,10 @@ data/cache/
 # Experiment artifacts
 *.log
 
+# Reports
+report.tex
+report.pdf
+
 # Task scripts
 !easy_task.py
-medium_task.py
 hard_task.py

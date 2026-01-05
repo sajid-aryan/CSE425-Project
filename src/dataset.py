@@ -10,6 +10,8 @@ from typing import Tuple, List, Dict, Optional
 import warnings
 warnings.filterwarnings('ignore')
 
+import hashlib
+
 
 class AudioDataset(Dataset):
     """Dataset class for audio files."""
@@ -190,9 +192,19 @@ class AudioDataset(Dataset):
 class SpectrogramDataset(Dataset):
     """Dataset class for spectrogram data."""
     
-    def __init__(self, audio_dir: str, sample_rate: int = 22050, 
-                 duration: float = 30.0, n_fft: int = 2048, 
-                 hop_length: int = 512, n_mels: int = 128):
+    def __init__(
+        self,
+        audio_dir: str,
+        sample_rate: int = 22050,
+        duration: float = 30.0,
+        n_fft: int = 2048,
+        hop_length: int = 512,
+        n_mels: int = 128,
+        *,
+        max_files: Optional[int] = None,
+        cache_dir: Optional[str] = None,
+        use_cache: bool = True,
+    ):
         """
         Initialize SpectrogramDataset.
         
@@ -210,6 +222,9 @@ class SpectrogramDataset(Dataset):
         self.n_fft = n_fft
         self.hop_length = hop_length
         self.n_mels = n_mels
+        self.max_files = max_files
+        self.cache_dir = cache_dir
+        self.use_cache = use_cache and cache_dir is not None
         
         # Get all audio files
         self.audio_files = []
@@ -224,8 +239,15 @@ class SpectrogramDataset(Dataset):
                 
                 self.audio_files.append(os.path.join(audio_dir, genre_file))
                 self.labels.append(self.genre_to_idx[genre])
+
+        if self.max_files is not None and self.max_files > 0:
+            self.audio_files = self.audio_files[: self.max_files]
+            self.labels = self.labels[: self.max_files]
         
         self.idx_to_genre = {v: k for k, v in self.genre_to_idx.items()}
+
+        if self.use_cache:
+            os.makedirs(self.cache_dir, exist_ok=True)
     
     def __len__(self) -> int:
         return len(self.audio_files)
@@ -234,6 +256,27 @@ class SpectrogramDataset(Dataset):
         """Get spectrogram and label for given index."""
         audio_path = self.audio_files[idx]
         label = self.labels[idx]
+
+        if self.use_cache:
+            cache_key = os.path.basename(audio_path)
+            cache_key = cache_key.replace(os.sep, '_').replace(':', '_')
+            cache_name = (
+                f"mel_sr{self.sample_rate}_dur{int(self.duration)}_"
+                f"fft{self.n_fft}_hop{self.hop_length}_mels{self.n_mels}__{cache_key}.npy"
+            )
+            cache_path = os.path.join(self.cache_dir, cache_name)
+            try:
+                if os.path.exists(cache_path):
+                    mel = np.load(cache_path).astype(np.float32, copy=False)
+                    # Backward-compatible: older cache entries may not be padded.
+                    time_steps = mel.shape[-1]
+                    target_steps = ((time_steps + 15) // 16) * 16
+                    if target_steps != time_steps:
+                        pad_width = target_steps - time_steps
+                        mel = np.pad(mel, ((0, 0), (0, 0), (0, pad_width)), mode='constant', constant_values=0.0)
+                    return torch.from_numpy(mel), label
+            except Exception:
+                pass
         
         # Load audio
         try:
@@ -253,9 +296,23 @@ class SpectrogramDataset(Dataset):
         
         # Normalize to [0, 1]
         log_mel_spec = (log_mel_spec - log_mel_spec.min()) / (log_mel_spec.max() - log_mel_spec.min())
+
+        # ConvVAE downsamples/upsamples 4 times (factor 16). Pad time axis so
+        # the width is divisible by 16, otherwise reconstruction shape mismatches.
+        time_steps = log_mel_spec.shape[1]
+        target_steps = ((time_steps + 15) // 16) * 16
+        if target_steps != time_steps:
+            pad_width = target_steps - time_steps
+            log_mel_spec = np.pad(log_mel_spec, ((0, 0), (0, pad_width)), mode='constant', constant_values=0.0)
         
         # Add channel dimension for ConvVAE
         log_mel_spec = np.expand_dims(log_mel_spec, axis=0)
+
+        if self.use_cache:
+            try:
+                np.save(cache_path, log_mel_spec.astype(np.float32, copy=False))
+            except Exception:
+                pass
         
         return torch.FloatTensor(log_mel_spec), label
 
@@ -353,8 +410,9 @@ class HybridDataset(Dataset):
         encoding = np.zeros(vocab_size)
         
         for word in words:
-            # Simple hash-based word indexing
-            word_idx = hash(word) % vocab_size
+            # Deterministic hash-based word indexing (reproducible across runs)
+            digest = hashlib.md5(word.encode('utf-8')).hexdigest()
+            word_idx = int(digest[:8], 16) % vocab_size
             encoding[word_idx] += 1
         
         # Normalize

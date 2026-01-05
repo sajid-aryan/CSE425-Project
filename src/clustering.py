@@ -131,9 +131,17 @@ class BaselineComparison:
         """
         # Normalize features
         features_scaled = self.scaler.fit_transform(features)
+
+        # Choose a valid PCA dimensionality for the given data.
+        # sklearn requires n_components <= min(n_samples, n_features).
+        n_samples, n_features = features_scaled.shape
+        effective_components = int(min(self.n_components, n_samples, n_features))
+        if effective_components < 1:
+            effective_components = 1
         
         # Apply PCA
-        pca_features = self.pca.fit_transform(features_scaled)
+        pca = PCA(n_components=effective_components, random_state=self.random_state)
+        pca_features = pca.fit_transform(features_scaled)
         
         # Apply K-Means
         kmeans = KMeans(n_clusters=self.n_clusters, random_state=self.random_state, n_init=10)
@@ -181,8 +189,12 @@ class DimensionalityReduction:
         Returns:
             t-SNE transformed features
         """
-        tsne = TSNE(n_components=n_components, perplexity=perplexity, 
-                   random_state=self.random_state, n_iter=1000)
+        tsne = TSNE(
+            n_components=n_components,
+            perplexity=perplexity,
+            random_state=self.random_state,
+            max_iter=1000,
+        )
         return tsne.fit_transform(features)
     
     def umap_transform(self, features: np.ndarray, n_components: int = 2, 
