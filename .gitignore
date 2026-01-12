@@ -38,10 +38,22 @@ data/cache/
 # Experiment artifacts
 *.log
 
+# LaTeX build artifacts
+*.aux
+*.out
+
 # Reports
 report.tex
 report.pdf
 
+# LaTeX sources (keep local)
+main.tex
+neurips_2024.sty
+
 # Task scripts
 !easy_task.py
-hard_task.py
+
+# Docs that shouldn't be tracked
+README.md
+PROJECT_SUMMARY.md
+project_summary.md

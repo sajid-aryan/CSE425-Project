@@ -220,8 +220,8 @@ This project follows the NeurIPS paper format and includes:
 ```bibtex
 @misc{vae_music_clustering_2024,
   title={Unsupervised Learning with VAE for Hybrid Language Music Clustering},
-  author={[Your Name]},
-  year={2024},
+  author={Sajid Aryan Sami},
+  year={2026},
   note={CSE425 Course Project}
 }
 ```
