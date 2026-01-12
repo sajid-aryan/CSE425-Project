@@ -218,7 +218,3 @@ This project follows the NeurIPS paper format and includes:
 ## License
 
 This project is for educational purposes as part of CSE425 coursework.
-
-## Contact
-
-For questions or issues, please refer to the project guidelines or course materials.
