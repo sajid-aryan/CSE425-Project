@@ -215,17 +215,6 @@ This project follows the NeurIPS paper format and includes:
 - Statistical analysis and comparisons
 - Professional visualizations
 
-## Citation
-
-```bibtex
-@misc{vae_music_clustering_2024,
-  title={Unsupervised Learning with VAE for Hybrid Language Music Clustering},
-  author={Sajid Aryan Sami},
-  year={2026},
-  note={CSE425 Course Project}
-}
-```
-
 ## License
 
 This project is for educational purposes as part of CSE425 coursework.
@@ -233,7 +222,3 @@ This project is for educational purposes as part of CSE425 coursework.
 ## Contact
 
 For questions or issues, please refer to the project guidelines or course materials.
-
----
-
-**Note:** This implementation covers all three task levels (Easy, Medium, Hard) to maximize the project score according to the grading criteria specified in the guidelines.
